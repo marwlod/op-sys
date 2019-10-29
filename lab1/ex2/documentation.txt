@@ -1,0 +1,37 @@
+Biblioteka statyczna:
+	-bez flag optymalizacyjnych:
+	Program duration was 2 secs and 755147865 nanos
+	-z flagą -O1:
+	Program duration was 0 secs and 830783734 nanos
+	-z flagą -O2:
+	Program duration was 1 secs and 38591164 nanos
+	-z flagą -O3:
+	Program duration was 1 secs and 90196041 nanos
+
+	Znaczaca roznica dla flagi -O1 (okolo 3 krotne skrocenie czasu wykonania), dla flagi -O2 okolo dwukrotne skrocenie czasu
+	a dla flagi -O3 skrocenie o okolo 30%
+
+Biblioteka współdzielona:
+	-bez flag optymalizacyjnych:
+	Program duration was 2 secs and 764374996 nanos
+	-z flagą -O1:
+	Program duration was 2 secs and 756262761 nanos
+	-z flagą -O2:
+	Program duration was 2 secs and 758454537 nanos
+	-z flagą -O3:
+	Program duration was 2 secs and 772666924 nanos
+
+	Bez wzgledu na uzyta flage optymalizacyjna bez roznicy w czasie dzialania
+
+Biblioteka ladowana dynamicznie:
+	-bez flag optymalizacyjnych:
+	Program duration was 2 secs and 760233777 nanos
+	-z flaga -O1:
+	Program duration was 2 secs and 751252635 nanos
+	-z flaga -O2:
+	Program duration was 2 secs and 759249720 nanos
+	-z flaga -O3:
+	Program duration was 2 secs and 757735842 nanos
+
+	Bez wzgledu na uzyta flage optymalizacyjna bez roznicy w czasie dzialania
+

@@ -1,0 +1,163 @@
+Sortowanie, rozmiar rekordu 4, liczba rekordow 2000:
+	./program generate dane1 2000 4
+	cp dane1 dane2
+	./program sort dane1 2000 4 sys
+	User time: 3.640000 s, system time: 4.500000 s
+	./program sort dane2 2000 4 lib
+	User time: 4.070000 s, system time: 4.130000 s
+
+Sortowanie, rozmiar rekordu 4, liczba rekordow 5000:
+	./program generate dane1 5000 4
+	cp dane1 dane2
+	./program sort dane1 5000 4 sys
+	User time: 23.680000 s, system time: 28.430000 s
+	./program sort dane2 5000 4 lib
+	User time: 25.290000 s, system time: 26.970000 s
+
+Przy rozmiarze bloku 4 bajty dla sortowania uzywajacego funkcji bibliotecznych C czas uzytkownika byl nieznacznie wyzszy
+a czas systemowy nieznacznie nizszy w stosunku do sortowania uzywajacego funkcji systemowych.
+
+
+
+Kopiowanie, rozmiar rekordu 4, liczba rekordow 2000000:
+	./program generate dane1 2000000 4
+	./program copy dane1 dane3 2000000 4 sys
+	User time: 1.370000 s, system time: 3.460000 s
+	./program copy dane1 dane3 2000000 4 lib
+	User time: 0.070000 s, system time: 0.010000 s
+
+Kopiowanie, rozmiar rekordu 4, liczba rekordow 5000000:
+	./program generate dane1 5000000 4
+	./program copy dane1 dane3 5000000 4 sys
+	User time: 3.240000 s, system time: 8.880000 s
+	./program copy dane1 dane3 5000000 4 lib
+	User time: 0.160000 s, system time: 0.030000 s
+
+Przy rozmiarze bloku 4 bajty dla kopiowania uzywajacego funkcji bibliotecznych C czas uzytkownika byl 20 krotnie nizszy
+a czas systemowy byl ponad 200 razy nizszy w stosunku do kopiowania uzywajacego funkcji systemowych.
+
+
+
+Sortowanie, rozmiar rekordu 512, liczba rekordow 2000:
+	./program generate dane1 2000 512
+	cp dane1 dane2
+	./program sort dane1 2000 512 sys
+	User time: 3.600000 s, system time: 4.560000 s
+	./program sort dane2 2000 512 lib
+	User time: 4.300000 s, system time: 4.620000 s
+
+Sortowanie, rozmiar rekordu 512, liczba rekordow 5000:
+	./program generate dane1 5000 512
+	cp dane1 dane2
+	./program sort dane1 5000 512 sys
+	User time: 23.100000 s, system time: 28.830000 s
+	./program sort dane2 5000 512 lib
+	User time: 26.490000 s, system time: 28.460000 s
+
+Przy rozmiarze bloku 512 bajtow dla sortowania uzywajacego funkcji bibliotecznych C czas uzytkownika byl nieznacznie wyzszy
+a czas systemowy bez wiekszych roznic w stosunku do sortowania uzywajacego funkcji systemowych.
+
+
+
+Kopiowanie, rozmiar rekordu 512, liczba rekordow 2000000:
+	./program generate dane1 2000000 512
+	./program copy dane1 dane3 2000000 512 sys
+	User time: 1.280000 s, system time: 4.080000 s
+	./program copy dane1 dane3 2000000 512 lib
+	User time: 0.270000 s, system time: 1.040000 s
+
+Kopiowanie, rozmiar rekordu 512, liczba rekordow 5000000:
+	./program generate dane1 5000000 512
+	./program copy dane1 dane3 5000000 512 sys
+	User time: 3.290000 s, system time: 10.310000 s
+	./program copy dane1 dane3 5000000 512 lib
+	User time: 0.920000 s, system time: 3.470000 s
+
+Przy rozmiarze bloku 512 bajtow dla kopiowania uzywajacego funkcji bibliotecznych C czas uzytkownika byl okolo 5 krotnie
+nizszy a czas systemowy okolo 3 krotnie nizszy w stosunku do kopiowania uzywajacego funkcji systemowych.
+
+
+
+Sortowanie, rozmiar rekordu 4096, liczba rekordow 1000:
+	./program generate dane1 1000 4096
+	cp dane1 dane2
+	./program sort dane1 1000 4096 sys
+	User time: 0.960000 s, system time: 1.540000 s
+	./program sort dane2 1000 4096 lib
+	User time: 0.990000 s, system time: 1.430000 s
+
+Sortowanie, rozmiar rekordu 4096, liczba rekordow 2500:
+	./program generate dane1 2500 4096
+	cp dane1 dane2
+	./program sort dane1 2500 4096 sys
+	User time: 5.840000 s, system time: 8.850000 s
+	./program sort dane2 2500 4096 lib
+	User time: 6.250000 s, system time: 9.170000 s
+
+Przy rozmiarze bloku 4096 bajtow dla sortowanie uzywajacego funkcji bibliotecznych C czas uzytkownika byl
+nieznacznie wyzszy a czas systemowy bez wiekszych roznic w stosunku do sortowania uzywajacego funkcji systemowych.
+
+
+
+Kopiowanie, rozmiar rekordu 4096, liczba rekordow 2000000:
+	./program generate dane1 2000000 4096
+	./program copy dane1 dane3 2000000 4096 sys
+	User time: 1.750000 s, system time: 11.220000 s
+	./program copy dane1 dane3 2000000 4096 lib
+	User time: 2.130000 s, system time: 11.130000 s
+
+Kopiowanie, rozmiar rekordu 4096, liczba rekordow 5000000:
+	./program generate dane1 5000000 4096
+	./program copy dane1 dane3 5000000 4096 sys
+	User time: 4.470000 s, system time: 27.890000 s
+	./program copy dane1 dane3 5000000 4096 lib
+	User time: 5.600000 s, system time: 28.800000 s
+
+Przy rozmiarze bloku 4096 bajtow dla kopiowania uzywajacego funkcji bibliotecznych C czas uzytkownika byl o okolo
+20% wyzszy a czas systemowy bez wiekszych roznic w stosunku do kopiowania uzywajacego funkcji systemowych.
+
+
+
+Sortowanie, rozmiar rekordu 8192, liczba rekordow 1000:
+	./program generate dane1 1000 8192
+	cp dane1 dane2
+	./program sort dane1 1000 8192 sys
+	User time: 0.980000 s, system time: 2.360000 s
+	./program sort dane2 1000 8192 lib
+	User time: 1.140000 s, system time: 2.300000 s
+
+Sortowanie, rozmiar rekordu 8192, liczba rekordow 2500:
+	./program generate dane1 2500 8192
+	cp dane1 dane2
+	./program sort dane1 2500 8192 sys
+	User time: 6.090000 s, system time: 14.350000 s
+	./program sort dane2 2500 8192 lib
+	User time: 6.470000 s, system time: 13.620000 s
+
+Przy rozmiarze bloku 8192 bajty dla sortowania uzywajacego funkcji bibliotecznych C czas uzytkownika byl o okolo
+10% wyzszy a czas systemowy bez wiekszych roznic w stosunku do sortowania uzywajacego funkcji systemowych.
+
+
+
+Kopiowanie, rozmiar rekordu 8192, liczba rekordow 1000000:
+	./program generate dane1 1000000 8192
+	./program copy dane1 dane3 1000000 8192 sys
+	User time: 0.930000 s, system time: 9.500000 s
+	./program copy dane1 dane3 1000000 8192 lib
+	User time: 1.660000 s, system time: 10.900000 s
+
+Kopiowanie, rozmiar rekordu 8192, liczba rekordow 2500000:
+	./program generate dane1 2500000 8192
+	./program copy dane1 dane3 2500000 8192 sys
+	User time: 2.220000 s, system time: 23.910000 s
+	./program copy dane1 dane3 2500000 8192 lib
+	User time: 4.260000 s, system time: 28.600000 s
+
+Przy rozmiarze bloku 8192 bajty dla kopiowania uzywajacego funkcji bibliotecznych C czas uzytkownika byl okolo
+2 razy wyzszy a czas systemowy o okolo 15% wyzszy w stosunku do kopiowania uzywajacego funkcji systemowych.
+
+
+
+Wnioski: Dla kopiowania przy malym rozmiarze rekordow (4 bajty) bardziej korzystne jest uzywanie funkcji bibliotecznych, przy wiekszym
+rozmiarze (4096 bajtow) bardziej korzystne jest uzywanie funkcji systemowych. Dla sortowania nieznacznie bardziej korzystne
+okazalo sie uzywanie funkcji systemowych niezaleznie od rozmiaru rekordu.

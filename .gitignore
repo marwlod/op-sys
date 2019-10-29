@@ -1,0 +1,9 @@
+cmake-build-debug
+build
+
+# object files
+.o
+
+# library files
+.so
+.a

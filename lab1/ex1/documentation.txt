@@ -1,0 +1,47 @@
+Dla programu fib, ktory zawiera wiele odwolan rekurencyjnych:
+	-bez flag optymalizacyjnych:
+	Program duration was 3 secs and 520602786 nanos
+	-z flaga -O1:
+	Program duration was 3 secs and 232095926 nanos
+	-z flaga -O2:
+	Program duration was 1 secs and 726902651 nanos
+	-z flaga -O3:
+	Program duration was 1 secs and 860909231 nanos
+
+	Jak widac powyzej dla flag -O2 oraz -O3 czas trwania programu byl o wiele krotszy (prawie dwukrotnie).
+
+Dla programu mallocs, ktory alokuje pamiec, a nastepnie porzuca referencje do tej pamieci:
+	-bez flag optymalizacyjnych:
+	Program duration was 3 secs and 107980676 nanos
+	-z flaga -O1:
+	Program duration was 3 secs and 2924155 nanos
+	-z flaga -O2:
+	Program duration was 2 secs and 999231265 nanos
+	-z flaga -O3:
+	Program duration was 2 secs and 996552507 nanos
+
+	Niewielka poprawa dla flag -O2 i -O3. Roznice w czasach niewielkie.
+
+Dla programu insertion, który sortuje wielokrotnie ta sama tablice:
+	-bez flag optymalizacyjnych:
+	Program duration was 2 secs and 757738430 nanos
+	-z flaga -O1:
+	Program duration was 0 secs and 832577558 nanos
+	-z flaga -O2:
+	Program duration was 1 secs and 42511845 nanos
+	-z flaga -O3:
+	Program duration was 1 secs and 92073241 nanos
+
+	Najlepszy czas zostal osiagniety dla flagi -O1, poprawa ponad trzykrotna, dla flagi -O2 poprawa dwukrotna, dla flagi -O3 poprawa o okolo 30%
+
+Dla programu string_to_list zawierajacego duzo alokacji pamięci:
+	-bez flag optymalizacyjnych:
+	Program duration was 2 secs and 940998553 nanos
+	-z flaga -O1:
+	Program duration was 2 secs and 703011977 nanos
+	-z flaga -O2:
+	Program duration was 2 secs and 945451550 nanos
+	-z flaga -O3:
+	Program duration was 2 secs and 940383554 nanos
+
+	Niewielka poprawa przy fladze -O1, dla innych flag brak poprawy.
