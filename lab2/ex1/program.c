@@ -6,147 +6,163 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/times.h>
+#include "utils.c"
 
-long double calculate_time_secs(clock_t start, clock_t end) {
-    return (long double)(end - start) / (long double)sysconf(_SC_CLK_TCK);
-}
-
+// generate (records * record_size) amount of random bytes to a file
 int generate(char *filename, long records, long record_size)
 {
     int file = open(filename, O_WRONLY | O_CREAT| O_TRUNC, S_IRUSR | S_IWUSR);
-    if (file < 0) {
-        perror("Opening of file failed.");
-        return 11;
+    if (file < 0)
+    {
+        perror("Opening of file failed");
+        return -1;
     }
     int random_source = open("/dev/urandom", O_RDONLY);
     if (random_source < 0)
     {
-        perror("Opening of random generator failed.");
-        return 12;
+        close(file);
+        perror("Opening of random generator failed");
+        return -1;
     }
 
-    for (long i = 0; i < records; i++) {
+    for (long i = 0; i < records; i++)
+    {
         char random_data[record_size];
         size_t data_read = 0;
-        while (data_read < sizeof random_data) {
-            ssize_t result = read(random_source, random_data + data_read, (sizeof random_data) - data_read);
+        while (data_read < sizeof(random_data))
+        {
+            // read at most size of record, if previous call to read() read only part of data,
+            // now try to read size of record reduced by the total amount already read
+            ssize_t result = read(random_source, random_data + data_read, sizeof(random_data) - data_read);
             if (result < 0)
             {
-                perror("Random values generation failed.");
-                return 13;
+                close(file);
+                close(random_source);
+                perror("Random values generation failed");
+                return -1;
             }
             data_read += result;
         }
-        write(file, random_data, record_size);
+        ssize_t data_written = write(file, random_data, sizeof(random_data));
+        if (data_written < sizeof(random_data))
+        {
+            close(file);
+            close(random_source);
+            perror("Writing random values to a file failed");
+            return -1;
+        }
     }
     close(file);
     close(random_source);
     return 0;
 }
 
+// insertion sort of records in a file (sort key is the first byte of the record interpreted as unsigned char)
+// using only system functions
 int sort_sys(char *filename, long records, long record_size)
 {
-    int file = open(filename, O_RDWR, S_IRUSR | S_IWUSR);
-    if (file < 0) {
-        perror("Opening of file failed.");
-        return 14;
+    int fd = open(filename, O_RDWR, S_IRUSR | S_IWUSR);
+    if (fd < 0)
+    {
+        perror("Opening of file failed");
+        return -1;
     }
     char first_record[record_size];
     char second_record[record_size];
-    long seeked;
-    for (long i = 1; i < records; i++) {
-        for (long j = i; j > 0; j--) {
-            seeked = lseek(file, (j-1) * record_size, SEEK_SET);
-            if (seeked < 0) {
-                perror("Couldn't change position in the file.");
-                close(file);
-                return 15;
+    for (long i = 1; i < records; i++)
+    {
+        for (long j = i; j > 0; j--)
+        {
+            // read two records and get their first chars to compare
+            int data_read = read_starting_from(fd, first_record, sizeof(first_record), (j-1)*record_size);
+            if (data_read < 0)
+            {
+                close(fd);
+                perror("Couldn't read record from file");
+                return -1;
             }
-            read(file, first_record, sizeof(first_record));
-            seeked = lseek(file, j * record_size, SEEK_SET);
-            if (seeked < 0) {
-                perror("Couldn't change position in the file.");
-                close(file);
-                return 16;
+            data_read = read_starting_from(fd, second_record, sizeof(second_record), j*record_size);
+            if (data_read < 0)
+            {
+                close(fd);
+                perror("Couldn't read record from file");
+                return -1;
             }
-            read(file, second_record, sizeof(second_record));
-            unsigned char first_char = first_record[0];
-            unsigned char second_char = second_record[0];
-            if (first_char > second_char) {
-                seeked = lseek(file, (j-1) * record_size, SEEK_SET);
-                if (seeked < 0) {
-                    perror("Couldn't change position in the file.");
-                    close(file);
-                    return 18;
+            unsigned char char_first_record = first_record[0];
+            unsigned char char_second_record = second_record[0];
+            // compare first chars of records, if not in ascending order, swap them, otherwise leave them in current order
+            if (char_first_record > char_second_record)
+            {
+                int data_written = write_starting_from(fd, second_record, sizeof(second_record), (j-1)*record_size);
+                if (data_written < 0)
+                {
+                    close(fd);
+                    perror("Couldn't write a record to the file");
+                    return -1;
                 }
-                int first_write = write(file, second_record, sizeof(second_record));
-                seeked = lseek(file, j * record_size, SEEK_SET);
-                if (seeked < 0) {
-                    perror("Couldn't change position in the file.");
-                    close(file);
-                    return 19;
-                }
-                int second_write = write(file, first_record, sizeof(first_record));
-                if (first_write < 0 || second_write < 0) {
-                    perror("Writing record to file failed.");
-                    close(file);
-                    return 20;
+                data_written = write_starting_from(fd, first_record, sizeof(first_record), j*record_size);
+                if (data_written < 0)
+                {
+                    close(fd);
+                    perror("Couldn't write a record to the file");
+                    return -1;
                 }
             }
         }
     }
-    close(file);
+    close(fd);
     return 0;
 }
 
-
+// insertion sort of records in a file (sort key is the first byte of the record interpreted as unsigned char)
+// using only C standard library functions
 int sort_lib(char *filename, long records, long record_size)
 {
     FILE *file = fopen(filename, "r+");
-    if (file < 0) {
+    if (file < 0)
+    {
         perror("Opening of file failed.");
-        return 21;
+        return -1;
     }
     char first_record[record_size];
     char second_record[record_size];
-    long seeked;
-    for (long i = 1; i < records; i++) {
-        for (long j = i; j > 0; j--) {
-            seeked = fseek(file, (j-1) * record_size, SEEK_SET);
-            if (seeked < 0) {
-                perror("Couldn't change position in the file.");
+    for (long i = 1; i < records; i++)
+    {
+        for (long j = i; j > 0; j--)
+        {
+            // read two records and get their first chars to compare
+            int data_read = fread_starting_from(file, first_record, sizeof(first_record), (j-1)*record_size);
+            if (data_read < 0)
+            {
                 fclose(file);
-                return 22;
+                perror("Couldn't read record from file");
+                return -1;
             }
-            fread(first_record, sizeof(first_record), 1, file);
-            seeked = fseek(file, j * record_size, SEEK_SET);
-            if (seeked < 0) {
-                perror("Couldn't change position in the file.");
+            data_read = fread_starting_from(file, second_record, sizeof(second_record), j*record_size);
+            if (data_read < 0)
+            {
                 fclose(file);
-                return 23;
+                perror("Couldn't read record from file");
+                return -1;
             }
-            fread(second_record, sizeof(second_record), 1, file);
-            unsigned char first_char = first_record[0];
-            unsigned char second_char = second_record[0];
-            if (first_char > second_char) {
-                seeked = fseek(file, (j-1) * record_size, SEEK_SET);
-                if (seeked < 0) {
-                    perror("Couldn't change position in the file.");
+            unsigned char char_first_record = first_record[0];
+            unsigned char char_second_record = second_record[0];
+            // compare first chars of records, if not in ascending order, swap them, otherwise leave them in current order
+            if (char_first_record > char_second_record)
+            {
+                int data_written = fwrite_starting_from(file, second_record, sizeof(second_record), (j-1)*record_size);
+                if (data_written < 0)
+                {
                     fclose(file);
-                    return 25;
+                    perror("Couldn't write a record to the file");
+                    return -1;
                 }
-                unsigned long first_write = fwrite(second_record, sizeof(char), sizeof(second_record), file);
-                seeked = fseek(file, j * record_size, SEEK_SET);
-                if (seeked < 0) {
-                    perror("Couldn't change position in the file.");
+                data_written = fwrite_starting_from(file, first_record, sizeof(first_record), j*record_size);
+                if (data_written < 0)
+                {
                     fclose(file);
-                    return 26;
-                }
-                unsigned long second_write = fwrite(first_record, sizeof(char), sizeof(second_record), file);
-                if (first_write < 0 || second_write < 0) {
-                    perror("Writing record to file failed.");
-                    fclose(file);
-                    return 27;
+                    perror("Couldn't write a record to the file");
+                    return -1;
                 }
             }
         }
@@ -155,51 +171,73 @@ int sort_lib(char *filename, long records, long record_size)
     return 0;
 }
 
+// copy num of records of buffer_size from file using only system functions
 int copy_sys(char *src_filename, char *dst_filename, long records, long buffer_size)
 {
-    int src_file = open(src_filename, O_RDONLY, S_IRUSR | S_IWUSR);
-    if (src_file < 0) {
-        perror("Opening of source file failed.");
-        return 28;
+    int src_fd = open(src_filename, O_RDONLY, S_IRUSR | S_IWUSR);
+    if (src_fd < 0)
+    {
+        perror("Opening of source file failed");
+        return -1;
     }
-    int dst_file = open(dst_filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-    if (dst_file < 0) {
-        perror("Opening of destination file failed.");
-        close(src_file);
-        return 29;
+    int dst_fd = open(dst_filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    if (dst_fd < 0)
+    {
+        close(src_fd);
+        perror("Opening of destination file failed");
+        return -1;
     }
     char buffer[buffer_size];
-    int bytes_read;
-    for (long i = 0; i < records; i++) {
-        bytes_read = read(src_file, buffer, buffer_size);
-        if (bytes_read > 0) {
-            write(dst_file, buffer, bytes_read);
+    for (long i = 0; i < records; i++)
+    {
+        int bytes_read = read(src_fd, buffer, buffer_size);
+        if (bytes_read > 0)
+        {
+            int bytes_written = write(dst_fd, buffer, bytes_read);
+            if (bytes_written != bytes_read) {
+                close(src_fd);
+                close(dst_fd);
+                errno = EIO;
+                perror("Writing to the destination file failed");
+                return -1;
+            }
         }
     }
-    close(src_file);
-    close(dst_file);
+    close(src_fd);
+    close(dst_fd);
     return 0;
 }
 
+// copy num of records of buffer_size from file using only C standard library functions
 int copy_lib(char *src_filename, char *dst_filename, long records, long buffer_size)
 {
     FILE *src_file = fopen(src_filename, "r");
-    if (src_file < 0) {
-        perror("Opening of source file failed.");
-        return 30;
+    if (!src_file)
+    {
+        perror("Opening of source file failed");
+        return -1;
     }
     FILE *dst_file = fopen(dst_filename, "w");
-    if (dst_file < 0) {
-        perror("Opening of destination file failed.");
+    if (!dst_file)
+    {
         fclose(src_file);
-        return 31;
+        perror("Opening of destination file failed");
+        return -1;
     }
     char buffer[buffer_size];
-    unsigned long bytes_read;
-    for (long i = 0; i < records; i++) {
-        bytes_read = fread(buffer, sizeof(char), buffer_size, src_file);
-        if (bytes_read > 0) {
-            fwrite(buffer, sizeof(char), bytes_read, dst_file);
+    for (long i = 0; i < records; i++)
+    {
+        unsigned long bytes_read = fread(buffer, sizeof(char), buffer_size, src_file);
+        if (bytes_read > 0)
+        {
+            unsigned long bytes_written = fwrite(buffer, sizeof(char), bytes_read, dst_file);
+            if (bytes_written != bytes_read) {
+                fclose(src_file);
+                fclose(dst_file);
+                errno = EIO;
+                perror("Writing to the destination file failed");
+                return -1;
+            }
         }
     }
     fclose(src_file);
@@ -212,12 +250,12 @@ int main(int argc, char *argv[])
     if (argc < 2)
     {
         errno = EINVAL;
-        perror("Program needs more arguments. Functions supported are: generate, sort and copy.");
+        perror("Program needs more arguments. Functions supported are: generate, sort and copy");
         return 1;
     }
 
-    struct tms *time_before = (struct tms*) malloc(sizeof(struct tms));
-    struct tms *time_after = (struct tms*) malloc(sizeof(struct tms));
+    struct tms *time_before = (struct tms *) malloc(sizeof(struct tms));
+    struct tms *time_after = (struct tms *) malloc(sizeof(struct tms));
     times(time_before);
 
 
@@ -225,6 +263,8 @@ int main(int argc, char *argv[])
     {
         if (argc != 5)
         {
+            free(time_before);
+            free(time_after);
             errno = EINVAL;
             perror("Usage: ./program generate filename num_of_records record_size");
             return 2;
@@ -233,17 +273,28 @@ int main(int argc, char *argv[])
         long record_size = strtol(argv[4], NULL, 10);
         if (num_of_records == 0 || record_size == 0)
         {
+            free(time_before);
+            free(time_after);
             errno = EINVAL;
-            perror("Number of records and record size must be integers.");
+            perror("Number of records and record size must be integers");
             return 3;
         }
-        return generate(argv[2], num_of_records, record_size);
+        int generated = generate(argv[2], num_of_records, record_size);
+        if (generated < 0)
+        {
+            free(time_before);
+            free(time_after);
+            perror("Generation of random data failed");
+            return 4;
+        }
     }
 
     else if (strcmp(argv[1], "sort") == 0)
     {
         if (argc != 6)
         {
+            free(time_before);
+            free(time_after);
             errno = EINVAL;
             perror("Usage: ./program sort filename num_of_records record_size sys_or_lib");
             return 4;
@@ -255,31 +306,40 @@ int main(int argc, char *argv[])
 
         if (num_of_records == 0 || record_size == 0)
         {
+            free(time_before);
+            free(time_after);
             errno = EINVAL;
-            perror("Number of records and record size must be integers.");
+            perror("Number of records and record size must be integers");
             return 5;
         }
         if (strcmp(function_type, "sys") == 0)
         {
             int sorted = sort_sys(file_name, num_of_records, record_size);
-            if (sorted > 0) {
-                perror("Sorting using system functions failed.");
+            if (sorted < 0)
+            {
+                free(time_before);
+                free(time_after);
+                perror("Sorting using system functions failed");
                 return 5;
             }
         }
         else if (strcmp(function_type, "lib") == 0)
         {
             int sorted = sort_lib(file_name, num_of_records, record_size);
-            if (sorted > 0) {
-                errno = EINVAL;
+            if (sorted < 0)
+            {
+                free(time_before);
+                free(time_after);
                 perror("Sorting using C library functions failed");
                 return 5;
             }
         }
         else
         {
+            free(time_before);
+            free(time_after);
             errno = EINVAL;
-            perror("Last argument must be either sys or lib.");
+            perror("Last argument must be either sys or lib");
             return 6;
         }
     }
@@ -289,6 +349,8 @@ int main(int argc, char *argv[])
     {
         if (argc != 7)
         {
+            free(time_before);
+            free(time_after);
             errno = EINVAL;
             perror("Usage: ./program copy src_file dst_file num_of_records buffer_size sys_or_lib");
             return 7;
@@ -301,15 +363,19 @@ int main(int argc, char *argv[])
 
         if (num_of_records == 0 || buffer_size == 0)
         {
+            free(time_before);
+            free(time_after);
             errno = EINVAL;
-            perror("Number of records and buffer size must be integers.");
+            perror("Number of records and buffer size must be integers");
             return 8;
         }
         if (strcmp(function_type, "sys") == 0)
         {
             int copied = copy_sys(src_file, dst_file, num_of_records, buffer_size);
-            if (copied > 0) {
-                errno = EINVAL;
+            if (copied < 0)
+            {
+                free(time_before);
+                free(time_after);
                 perror("Copying using system functions failed");
                 return 8;
             }
@@ -317,28 +383,37 @@ int main(int argc, char *argv[])
         else if (strcmp(function_type, "lib") == 0)
         {
             int copied = copy_lib(src_file, dst_file, num_of_records, buffer_size);
-            if (copied > 0) {
-                errno = EINVAL;
+            if (copied < 0)
+            {
+                free(time_before);
+                free(time_after);
                 perror("Copying using C library functions failed");
                 return 8;
             }
         }
         else
         {
+            free(time_before);
+            free(time_after);
             errno = EINVAL;
-            perror("Last argument must be either sys or lib.");
+            perror("Last argument must be either sys or lib");
             return 9;
         }
     }
 
     else
     {
+        free(time_before);
+        free(time_after);
         errno = EINVAL;
-        perror("Only generate, sort and copy functions are supported. Usage: ./program function_name other_arguments.");
+        perror("Only generate, sort and copy functions are supported. Usage: ./program function_name other_arguments");
         return 10;
     }
 
     times(time_after);
     printf("User time: %Lf s, system time: %Lf s\n", calculate_time_secs(time_before->tms_utime, time_after->tms_utime),
            calculate_time_secs(time_before->tms_stime, time_after->tms_stime));
+    free(time_before);
+    free(time_after);
+    return 0;
 }

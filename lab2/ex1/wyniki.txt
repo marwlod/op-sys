@@ -158,6 +158,10 @@ Przy rozmiarze bloku 8192 bajty dla kopiowania uzywajacego funkcji bibliotecznyc
 
 
 
-Wnioski: Dla kopiowania przy malym rozmiarze rekordow (4 bajty) bardziej korzystne jest uzywanie funkcji bibliotecznych, przy wiekszym
-rozmiarze (4096 bajtow) bardziej korzystne jest uzywanie funkcji systemowych. Dla sortowania nieznacznie bardziej korzystne
+Wnioski: Dla kopiowania przy malym rozmiarze rekordow (4 bajty) bardziej korzystne jest uzywanie funkcji bibliotecznych
+poniewaz w funkcjach bibliotecznych realizowane jest buforowanie w przestrzeni uzytkownika, ktore polega na zwiekszeniu
+rozmiaru bloku a zatem zmniejszeniu liczby operacji odczytu/zapisu, ktore sa kosztowne czasowo. Przy wiekszym
+rozmiarze (4096 bajtow) bardziej korzystne jest uzywanie funkcji systemowych ze wzgledu na to, że rozmiary bufora
+dla funkcji systemowych i bibliotecznych staja sie podobne, a na niekorzysc funkcji bibliotecznych przemawia dodatkowy
+narzut w postaci dodatkowego kodu (pod spodem i tak wywoluja fukcje systemowe). Dla sortowania nieznacznie bardziej korzystne
 okazalo sie uzywanie funkcji systemowych niezaleznie od rozmiaru rekordu.
