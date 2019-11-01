@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <sys/times.h>
 
-long double calculate_time_millis(clock_t start, clock_t end) {
+long double calculate_time_secs(clock_t start, clock_t end) {
     return (long double)(end - start) / (long double)sysconf(_SC_CLK_TCK);
 }
 
@@ -339,6 +339,6 @@ int main(int argc, char *argv[])
     }
 
     times(time_after);
-    printf("User time: %Lf s, system time: %Lf s\n", calculate_time_millis(time_before->tms_utime, time_after->tms_utime),
-           calculate_time_millis(time_before->tms_stime, time_after->tms_stime));
+    printf("User time: %Lf s, system time: %Lf s\n", calculate_time_secs(time_before->tms_utime, time_after->tms_utime),
+           calculate_time_secs(time_before->tms_stime, time_after->tms_stime));
 }
