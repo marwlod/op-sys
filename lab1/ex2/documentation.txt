@@ -11,7 +11,7 @@ Biblioteka statyczna:
 	Znaczaca roznica dla flagi -O1 (okolo 3 krotne skrocenie czasu wykonania), dla flagi -O2 okolo dwukrotne skrocenie czasu
 	a dla flagi -O3 skrocenie o okolo 30%
 
-Biblioteka współdzielona:
+Biblioteka wspoldzielona:
 	-bez flag optymalizacyjnych:
 	Program duration was 2 secs and 764374996 nanos
 	-z flagą -O1:
