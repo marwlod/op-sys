@@ -3,5 +3,4 @@ project(op-sys C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_subdirectory(ex1)
-add_subdirectory(ex2)
+add_executable(lab1-ex1 fib.c insertion.c string_to_list.c mallocs.c)

@@ -3,4 +3,5 @@ project(op-sys C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(lab2 ex1/program.c ex2/search_nftw.c ex2/search_stat.c)
+add_subdirectory(ex1)
+add_subdirectory(ex2)

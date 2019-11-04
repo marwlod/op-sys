@@ -1,0 +1,5 @@
+/bin/ls -l
+pwd
+echo -e "2019-10-31 20:00:00\n"
+mkdir temp
+rm -r temp

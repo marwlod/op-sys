@@ -3,5 +3,4 @@ project(op-sys C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_subdirectory(ex1)
-add_subdirectory(ex2)
+add_executable(lab3-ex2 cmd_interpreter.c)
