@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
 project(op-sys C)
-
 set(CMAKE_C_STANDARD 11)
 
-add_executable(lab3-ex2 cmd_interpreter.c)
+add_executable(lab3-batch_job_interpreter cmd_interpreter.c)

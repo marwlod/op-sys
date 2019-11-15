@@ -3,4 +3,4 @@ project(op-sys C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(lab2-ex1 program.c)
+add_executable(lab2-system_vs_lib_io program.c)

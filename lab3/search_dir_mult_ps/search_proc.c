@@ -8,7 +8,7 @@
 #include <wait.h>
 #include "utils.c"
 
-// similar to lab2/ex2 but search each new directory in a separate process
+// similar to lab2/libraries but search each new directory in a separate process
 int deep_search_files(char *dirname, int compare_func(char *, char *), char *date)
 {
     DIR *dir = opendir(dirname);
