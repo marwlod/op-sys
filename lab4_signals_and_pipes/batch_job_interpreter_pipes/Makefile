@@ -1,5 +1,5 @@
 CC = gcc
-CFlags = -Wall
+CFlags = -Wall -g
 
 all: cmd_interpreter_extd
 
