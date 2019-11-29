@@ -12,14 +12,17 @@ static const int BUFFER_SIZE = 1024;
 // modifies source string
 void trim_whitespace(char **str)
 {
-    // leading
-    while (isspace((unsigned char) **str))
-    {
-        (*str)++;
-    }
-    if (**str == 0)
-    {
+    if (strlen(*str) == 0) {
         return;
+    }
+
+    // leading
+    int leadingCounter = 0;
+    char *trav = *str;
+    while (isspace((unsigned char) *trav))
+    {
+        leadingCounter++;
+        trav++;
     }
 
     // trailing
@@ -29,6 +32,7 @@ void trim_whitespace(char **str)
         end--;
     }
     end[1] = '\0';
+    memmove(*str, *str + leadingCounter, strlen(*str));
 }
 
 char **tokenize(char *str)
