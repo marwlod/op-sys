@@ -1,5 +1,5 @@
-  /bin/ls | grep e | grep a
-ls -l | grep rwx
+/bin/ls | grep a | grep b | grep c | grep d | grep e
+  ls -l | grep rwx
 echo -e "2019-10-31 20:00:00\n"
-mkdir temp
-rm -r temp
+mkdir t1 t2 t3 t4
+rm -r t1 t2 t3 t4

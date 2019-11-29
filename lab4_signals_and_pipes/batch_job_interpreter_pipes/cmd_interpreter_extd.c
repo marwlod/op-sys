@@ -94,7 +94,7 @@ void free_dp(char **dp) {
 }
 
 void free_pargs(char ***pargs) {
-    for (int i = 0; i < MAX_PROGS_PIPED; i++) {
+    for (int i = 0; i < MAX_PROGS_PIPED + 1; i++) {
         free_dp(pargs[i]);
     }
 }
@@ -125,10 +125,12 @@ int main(int argc, char *argv[])
     {
         trim_whitespace(&line);
         char **tokens = tokenize(line);
-        char **pargs[MAX_PROGS_PIPED];
-        for (int i = 0; i < MAX_PROGS_PIPED; i++)
+        // max programs to pipe + NULL
+        char **pargs[MAX_PROGS_PIPED + 1];
+        for (int i = 0; i < MAX_PROGS_PIPED + 1; i++)
         {
-            pargs[i] = (char **) calloc(MAX_ARGS, sizeof(char *));
+            // program name + args + NULL
+            pargs[i] = (char **) calloc(MAX_ARGS + 2, sizeof(char *));
         }
 
         int progNum = 0;
