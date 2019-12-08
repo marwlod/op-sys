@@ -31,12 +31,17 @@ void pkill() {
 
 
 int main(int argc, char *argv[]) {
+    struct sigaction actions;
+    actions.sa_flags = 0;
+    sigemptyset(&actions.sa_mask);
+    actions.sa_handler = stop_resume;
+
     pid_t cpid = fork();
     // parent process
     if (cpid) {
         child_pid = cpid;
         int cstat;
-        signal(SIGTSTP, stop_resume);
+        sigaction(SIGTSTP, &actions, NULL);
         signal(SIGINT, pkill);
         while (1) {
             waitpid(cpid, &cstat, 0);
