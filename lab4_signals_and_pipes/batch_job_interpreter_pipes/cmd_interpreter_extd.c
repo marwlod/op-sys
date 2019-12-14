@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     }
 
     char *filename = argv[1];
-    FILE *file = fopen(filename, "r+");
+    FILE *file = fopen(filename, "r");
     if (!file)
     {
         errno = EIO;
