@@ -26,12 +26,12 @@ int main() {
 
     key_t key = ftok(path, getpid());
     if (key == -1) {
-        EXIT_MSG("Generation of private key failed\n");
+        EXIT_MSG("Client: generation of private key failed\n");
     }
 
-    priv_qid = msgget(key, IPC_CREAT | IPC_EXCL | 0666);
+    priv_qid = msgget(key, IPC_CREAT | 0666);
     if (priv_qid == -1) {
-        EXIT_MSG("Creation of private queue failed\n");
+        EXIT_MSG("Client: creation of private queue failed\n");
     }
     register_client(key);
 
@@ -117,8 +117,8 @@ void request_end(Message *msg) {
     }
 }
 
-int create_priv_queue(char *path, int ID) {
-    int key = ftok(path, ID);
+int create_priv_queue(char *path, int id) {
+    int key = ftok(path, id);
     if (key == -1) {
         EXIT_MSG("Client: generation of key for private queue failed\n");
     }

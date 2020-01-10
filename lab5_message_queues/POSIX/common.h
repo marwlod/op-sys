@@ -3,7 +3,8 @@
 
 #define MAX_CONT_SIZE 2048
 #define MAX_CLIENTS  5
-#define PROJECT_ID 3
+#define MSG_SIZE sizeof(Message)
+#define MAX_MSGS 9
 
 typedef struct Message {
     long type;
@@ -11,9 +12,8 @@ typedef struct Message {
     char content[MAX_CONT_SIZE];
 } Message;
 typedef enum type {
-    REGISTER = 1, MIRROR = 2, TIME = 3, END = 4
+    REGISTER = 1, MIRROR = 2, TIME = 3, END = 4, QUIT = 5
 } type;
 
-const size_t MSG_SIZE = sizeof(Message) - sizeof(long);
-
+const char server_path[] = "/server";
 #endif

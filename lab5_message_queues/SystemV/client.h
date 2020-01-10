@@ -1,7 +1,7 @@
 #ifndef CLIENT_H
 #define CLIENT_H
-#define EXIT_MSG(format, ...) { fprintf(stderr, format, ##__VA_ARGS__); exit(-1); }
 
+#define EXIT_MSG(format, ...) { fprintf(stderr, format, ##__VA_ARGS__); exit(-1); }
 void register_client(key_t key);
 void request_mirror(Message *msg);
 void request_time(Message *msg);

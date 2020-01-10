@@ -30,7 +30,7 @@ int main() {
         EXIT_MSG("Server: key generation for public queue failed\n");
     }
 
-    queue_desc = msgget(key, IPC_CREAT | IPC_EXCL | 0666);
+    queue_desc = msgget(key, IPC_CREAT | 0666);
     if (queue_desc == -1) {
         EXIT_MSG("Server: public queue creation failed\n");
     }
@@ -54,21 +54,14 @@ int main() {
 
 void dispatch_requests(struct Message *msg) {
     if (msg == NULL) return;
-    switch(msg->type){
-        case REGISTER:
-            handle_register(msg);
-            break;
-        case MIRROR:
-            handle_mirror(msg);
-            break;
-        case TIME:
-            handle_time(msg);
-            break;
-        case END:
-            handle_end(msg);
-            break;
-        default:
-            break;
+    if (msg->type == REGISTER) {
+        handle_register(msg);
+    } else if (msg->type == MIRROR) {
+        handle_mirror(msg);
+    } else if (msg->type == TIME) {
+        handle_time(msg);
+    } else if (msg->type == END) {
+        handle_end(msg);
     }
 }
 

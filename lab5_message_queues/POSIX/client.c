@@ -2,81 +2,55 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <string.h>
-#include <errno.h>
 #include <unistd.h>
 #include <mqueue.h>
-#include <ctype.h>
-#include <time.h>
 #include <fcntl.h>
 #include <signal.h>
-
-#include "communication.h"
-
-#define EXIT_MSG(format, ...) { fprintf(stderr, format, ##__VA_ARGS__); exit(-1); }
-
-void register_client();
-void request_mirror(struct Message *msg);
-void request_calc(struct Message *msg);
-void request_time(struct Message *msg);
-void request_end(struct Message *msg);
-void request_quit(struct Message *msg);
-void close_queue();
-void sigint_handler(int);
-
-int session_num = -2;
-mqd_t queue_desc = -1;
-mqd_t priv_qid = -1;
-char myPath[20];
-
-// MAIN ////////////////////////////////////////////////////////////////////////
+#include "common.h"
+#include "client.h"
 
 int main() {
-    if (atexit(close_queue) == -1)
-    EXIT_MSG("client: registering client's atexit failed\n");
-    if (signal(SIGINT, sigint_handler) == SIG_ERR)
-    EXIT_MSG("client: registering INT failed!");
+    if (atexit(close_queue) == -1) {
+        EXIT_MSG("Client: registering 'atexit' failed\n");
+    }
+    if (signal(SIGINT, sigint_handler) == SIG_ERR) {
+        EXIT_MSG("Client: registering SIGINT handler failed\n");
+    }
+    sprintf(client_path, "/%d", getpid());
 
-    sprintf(myPath, "/%d", getpid());
-
-    queue_desc = mq_open(server_path, O_WRONLY);
-    if (queue_desc == -1) EXIT_MSG("Opening public queue failed\n");
+    pub_qid = mq_open(server_path, O_WRONLY);
+    if (pub_qid == -1) EXIT_MSG("Client: public queue opening failed\n");
 
     struct mq_attr posixAttr;
-    posixAttr.mq_maxmsg = MAX_MESSAGE_QUEUE_SIZE;
-    posixAttr.mq_msgsize = MESSAGE_SIZE;
+    posixAttr.mq_maxmsg = MAX_MSGS;
+    posixAttr.mq_msgsize = MSG_SIZE;
 
-    priv_qid = mq_open(myPath, O_RDONLY | O_CREAT | O_EXCL, 0666, &posixAttr);
-    if (priv_qid == -1) EXIT_MSG("client: creation of private queue failed\n");
-
+    priv_qid = mq_open(client_path, O_RDONLY | O_CREAT, 0666, &posixAttr);
+    if (priv_qid == -1) EXIT_MSG("Client: creation of private queue failed\n");
     register_client();
 
-    char cmd[20];
+    char request[50];
     Message msg;
-    while(1) {
+    while (1) {
         msg.sender_pid = getpid();
-        printf("Enter your request: ");
-        if (fgets(cmd, 20, stdin) == NULL) {
-            printf("client: error reading your command\n");
+        printf("Client: please enter your request:\n");
+        if (fgets(request, 50, stdin) == NULL) {
+            printf("Client: invalid request, probably too long\n");
             continue;
         }
-        int n = strlen(cmd);
-        if (cmd[n-1] == '\n') cmd[n-1] = 0;
-
-
-        if (strcmp(cmd, "mirror") == 0) {
+        int n = strlen(request);
+        if (request[n-1] == '\n') request[n-1] = 0;
+        if (strcmp(request, "mirror") == 0) {
             request_mirror(&msg);
-        } else if (strcmp(cmd, "calc") == 0) {
-            request_calc(&msg);
-        } else if (strcmp(cmd, "time") == 0) {
+        } else if (strcmp(request, "time") == 0) {
             request_time(&msg);
-        } else if (strcmp(cmd, "end") == 0) {
+        } else if (strcmp(request, "end") == 0) {
             request_end(&msg);
-        } else if (strcmp(cmd, "quit") == 0) {
+        } else if (strcmp(request, "quit") == 0) {
             exit(0);
         } else {
-            printf("client: wrong command\n");
+            printf("Client: unknown request %s\n", request);
         }
     }
 }
@@ -86,105 +60,97 @@ void register_client() {
     msg.type = REGISTER;
     msg.sender_pid = getpid();
 
-    if (mq_send(queue_desc, (char*) &msg, MESSAGE_SIZE, 1) == -1)
-    EXIT_MSG("client: login request failed\n");
-    if (mq_receive(priv_qid, (char*) &msg, MESSAGE_SIZE, NULL) == -1)
-    EXIT_MSG("client: catching REGISTER response failed\n");
-    if (sscanf(msg.content, "%d", &session_num) < 1)
-    EXIT_MSG("client: scanning REGISTER response failed\n");
-    if (session_num < 0)
-    EXIT_MSG("client: server cannot have more clients\n");
-
-    printf("client: client registered! My session nr is %d\n", session_num);
+    if (mq_send(pub_qid, (char*) &msg, MSG_SIZE, 1) == -1) {
+        EXIT_MSG("Client: REGISTER request sending failed\n");
+    }
+    if (mq_receive(priv_qid, (char*) &msg, MSG_SIZE, NULL) == -1) {
+        EXIT_MSG("Client: getting REGISTER response failed\n");
+    }
+    if (sscanf(msg.content, "%d", &session_num) < 1) {
+        EXIT_MSG("Client: parsing REGISTER response failed\n");
+    }
+    if (session_num < 0) {
+        EXIT_MSG("Client: server was unable to register any more clients\n");
+    }
+    printf("Client: registration successful, session: %d\n", session_num);
 }
-
-// HANDLERS ////////////////////////////////////////////////////////////////////
 
 void request_mirror(struct Message *msg){
     msg->type = MIRROR;
-    printf("client: enter string of characters to mirror: ");
+    printf("Client: enter a string to mirror: \n");
     if (fgets(msg->content, MAX_CONT_SIZE, stdin) == NULL) {
-        printf("client: too many characters\n");
+        printf("Client: string too long, unable to proceed\n");
         return;
     }
-
-    if (mq_send(queue_desc, (char*) msg, MESSAGE_SIZE, 1) == -1)
-    EXIT_MSG("client: MIRROR request failed\n");
-    if (mq_receive(priv_qid, (char*) msg, MESSAGE_SIZE, NULL) == -1)
-    EXIT_MSG("client: catching MIRROR response failed\n");
-    printf("%s", msg->content);
-}
-
-void request_calc(struct Message *msg) {
-    msg->type = CALC;
-    printf("Enter expression to calculate: ");
-    if (fgets(msg->content, MAX_CONT_SIZE, stdin) == NULL) {
-        printf("client: too many characters\n");
-        return;
+    if (mq_send(pub_qid, (char*) msg, MSG_SIZE, 1) == -1) {
+        EXIT_MSG("Client: MIRROR request sending failed\n");
     }
-    if (mq_send(queue_desc, (char*) msg, MESSAGE_SIZE, 1) == -1)
-    EXIT_MSG("client: CALC request failed\n");
-    if (mq_receive(priv_qid, (char*) msg, MESSAGE_SIZE, NULL) == -1)
-    EXIT_MSG("client: catching CALC response failed\n");
+    if (mq_receive(priv_qid, (char*) msg, MSG_SIZE, NULL) == -1) {
+        EXIT_MSG("Client: getting MIRROR response failed\n");
+    }
     printf("%s", msg->content);
 }
 
 void request_time(struct Message *msg){
     msg->type = TIME;
-
-    if (mq_send(queue_desc, (char*) msg, MESSAGE_SIZE, 1) == -1)
-    EXIT_MSG("client: TIME request failed\n");
-    if (mq_receive(priv_qid, (char*) msg, MESSAGE_SIZE, NULL) == -1)
-    EXIT_MSG("client: catching TIME response failed\n");
+    if (mq_send(pub_qid, (char*) msg, MSG_SIZE, 1) == -1) {
+        EXIT_MSG("Client: TIME request sending failed\n");
+    }
+    if (mq_receive(priv_qid, (char*) msg, MSG_SIZE, NULL) == -1) {
+        EXIT_MSG("Client: getting TIME response failed\n");
+    }
     printf("%s\n", msg->content);
 }
 
 void request_end(struct Message *msg) {
     msg->type = END;
 
-    if (mq_send(queue_desc, (char*) msg, MESSAGE_SIZE, 1) == -1)
-    EXIT_MSG("client: END request failed\n");
+    if (mq_send(pub_qid, (char*) msg, MSG_SIZE, 1) == -1) {
+        EXIT_MSG("Client: END request sending failed\n");
+    }
 }
 
 void request_quit(struct Message *msg) {
     msg->type = QUIT;
 
-    if (mq_send(queue_desc, (char*) msg, MESSAGE_SIZE, 1) == -1)
-        printf("client: END request failed - server may have already been closed\n");
+    if (mq_send(pub_qid, (char*) msg, MSG_SIZE, 1) == -1) {
+        printf("Client: QUIT request sending failed\n");
+    }
     fflush(stdout);
 }
-
-// HELPERS /////////////////////////////////////////////////////////////////////
 
 void close_queue() {
     if (priv_qid > -1) {
         if (session_num >= 0) {
-            printf("\nBefore quitting, i will try to send QUIT request to public queue!\n");
+            printf("Client: sending QUIT request to server\n");
             Message msg;
             msg.sender_pid = getpid();
             request_quit(&msg);
         }
 
-        if (mq_close(queue_desc) == -1) {
-            printf("client: there was some error closing servers's queue!\n");
+        if (mq_close(pub_qid) == -1) {
+            printf("Client: error during closing of public queue\n");
         } else {
-            printf("client: servers's queue closed successfully!\n");
+            printf("Client: public queue closed successfully\n");
         }
 
         if (mq_close(priv_qid) == -1) {
-            printf("client: there was some error closing client's queue!\n");
+            printf("Client: error during closing of private queue\n");
         } else {
-            printf("client: queue closed successfully!\n");
+            printf("Client: private queue closed successfully\n");
         }
 
-        if (mq_unlink(myPath) == -1) {
-            printf("client: there was some error deleting client's queue!\n");
+        if (mq_unlink(client_path) == -1) {
+            printf("Client: error during deleting of private queue\n");
         } else {
-            printf("client: queue deleted successfully!\n");
+            printf("Client: private queue deleted successfully\n");
         }
     } else {
-        printf("client: there was no need of deleting queue!\n");
+        printf("Client: queue was already deleted\n");
     }
 }
 
-void sigint_handler(int _) { exit(2); }
+// handle SIGINT signals
+void sigint_handler(int _) {
+    exit(2);
+}
