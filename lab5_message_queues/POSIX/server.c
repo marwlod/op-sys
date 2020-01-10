@@ -16,15 +16,15 @@
 
 #define EXIT_MSG(format, ...) { fprintf(stderr, format, ##__VA_ARGS__); exit(-1); }
 
-void handle_public_queue(struct Message *msg);
-void handle_login(struct Message *msg);
+void dispatch_requests(struct Message *msg);
+void handle_register(struct Message *msg);
 void handle_mirror(struct Message *msg);
 void handle_calc(struct Message *msg);
 void handle_time(struct Message *msg);
 void handle_end(struct Message *msg);
 void handle_quit(struct Message *msg);
 int get_qid(pid_t client_pid);
-int prepare_msg(struct Message *msg);
+int create_msg(struct Message *msg);
 char* convert_time(const time_t *mtime);
 void close_queue();
 void sigint_handler(int);
@@ -62,15 +62,15 @@ int main() {
 
         if (mq_receive(queue_desc, (char*) &buffer, MESSAGE_SIZE, NULL) == -1)
         EXIT_MSG("server: receiving message by server failed\n");
-        handle_public_queue(&buffer);
+        dispatch_requests(&buffer);
     }
 }
 
-void handle_public_queue(struct Message *msg) {
+void dispatch_requests(struct Message *msg) {
     if (msg == NULL) return;
-    switch(msg->mtype) {
-        case LOGIN:
-            handle_login(msg);
+    switch(msg->type) {
+        case REGISTER:
+            handle_register(msg);
             break;
         case MIRROR:
             handle_mirror(msg);
@@ -92,9 +92,7 @@ void handle_public_queue(struct Message *msg) {
     }
 }
 
-// HANDLERS ////////////////////////////////////////////////////////////////////
-
-void handle_login(struct Message *msg) {
+void handle_register(struct Message *msg) {
     int clientPID = msg->sender_pid;
     char clientPath[15];
     sprintf(clientPath, "/%d", clientPID);
@@ -102,12 +100,12 @@ void handle_login(struct Message *msg) {
     int client_queue_id = mq_open(clientPath, O_WRONLY);
     if (client_queue_id == -1) EXIT_MSG("server: reading client_queue_id failed\n");
 
-    msg->mtype = INIT;
+    msg->type = INIT;
     msg->sender_pid = getpid();
 
     if (client_count > MAX_CLIENTS - 1) {
         printf("server: maximum amount of clients reached\n");
-        sprintf(msg->message_text, "%d", -1);
+        sprintf(msg->content, "%d", -1);
         if (mq_send(client_queue_id, (char*) msg, MESSAGE_SIZE, 1) == -1)
         EXIT_MSG("server: login response failed\n");
         if (mq_close(client_queue_id) == -1)
@@ -115,23 +113,23 @@ void handle_login(struct Message *msg) {
     } else {
         clients_data[client_count][0] = clientPID;
         clients_data[client_count++][1] = client_queue_id;
-        sprintf(msg->message_text, "%d", client_count-1);
+        sprintf(msg->content, "%d", client_count - 1);
         if (mq_send(client_queue_id, (char*) msg, MESSAGE_SIZE, 1) == -1)
         EXIT_MSG("server: login response failed\n");
     }
 }
 
 void handle_mirror(struct Message *msg) {
-    int client_queue_id = prepare_msg(msg);
+    int client_queue_id = create_msg(msg);
     if (client_queue_id == -1) return;
 
-    int msgLen = (int) strlen(msg->message_text);
-    if (msg->message_text[msgLen-1] == '\n') msgLen--;
+    int msgLen = (int) strlen(msg->content);
+    if (msg->content[msgLen - 1] == '\n') msgLen--;
 
     int i; for (i = 0; i < msgLen / 2; ++i) {
-        char buff = msg->message_text[i];
-        msg->message_text[i] = msg->message_text[msgLen - i - 1];
-        msg->message_text[msgLen - i - 1] = buff;
+        char buff = msg->content[i];
+        msg->content[i] = msg->content[msgLen - i - 1];
+        msg->content[msgLen - i - 1] = buff;
     }
 
     if (mq_send(client_queue_id, (char*) msg, MESSAGE_SIZE, 1) == -1)
@@ -139,13 +137,13 @@ void handle_mirror(struct Message *msg) {
 }
 
 void handle_calc(struct Message *msg) {
-    int client_queue_id = prepare_msg(msg);
+    int client_queue_id = create_msg(msg);
     if (client_queue_id == -1) return;
 
     char cmd[4108];
-    sprintf(cmd, "echo '%s' | bc", msg->message_text);
+    sprintf(cmd, "echo '%s' | bc", msg->content);
     FILE* calc = popen(cmd, "r");
-    fgets(msg->message_text, MAX_CONT_SIZE, calc);
+    fgets(msg->content, MAX_CONT_SIZE, calc);
     pclose(calc);
 
     if (mq_send(client_queue_id, (char*) msg, MESSAGE_SIZE, 1) == -1)
@@ -153,14 +151,14 @@ void handle_calc(struct Message *msg) {
 }
 
 void handle_time(struct Message *msg) {
-    int client_queue_id = prepare_msg(msg);
+    int client_queue_id = create_msg(msg);
     if (client_queue_id == -1) return;
 
     time_t timer;
     time(&timer);
     char* timeStr = convert_time(&timer);
 
-    sprintf(msg->message_text, "%s", timeStr);
+    sprintf(msg->content, "%s", timeStr);
     free(timeStr);
 
     if (mq_send(client_queue_id, (char*) msg, MESSAGE_SIZE, 1) == -1)
@@ -189,14 +187,14 @@ void handle_quit(struct Message *msg) {
 
 // HELPERS /////////////////////////////////////////////////////////////////////
 
-int prepare_msg(struct Message *msg) {
+int create_msg(struct Message *msg) {
     int client_queue_id  = get_qid(msg->sender_pid);
     if (client_queue_id == -1) {
         printf("server: client not found\n");
         return -1;
     }
 
-    msg->mtype = msg->sender_pid;
+    msg->type = msg->sender_pid;
     msg->sender_pid = getpid();
 
     return client_queue_id;

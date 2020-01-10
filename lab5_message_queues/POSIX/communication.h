@@ -7,14 +7,14 @@
 #define MESSAGE_SIZE sizeof(Message)
 #define MAX_MESSAGE_QUEUE_SIZE 9
 
-typedef enum mtype {
-    LOGIN = 1, MIRROR = 2, CALC = 3, TIME = 4, END = 5, INIT = 6, QUIT = 7
-} mtype;
+typedef enum type {
+    REGISTER = 1, MIRROR = 2, CALC = 3, TIME = 4, END = 5, INIT = 6, QUIT = 7
+} type;
 
 typedef struct Message {
-    long mtype;
+    long type;
     pid_t sender_pid;
-    char message_text[MAX_CONT_SIZE];
+    char content[MAX_CONT_SIZE];
 } Message;
 
 const char server_path[] = "/server";

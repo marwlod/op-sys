@@ -25,9 +25,9 @@ void request_quit(struct Message *msg);
 void close_queue();
 void sigint_handler(int);
 
-int sessionID = -2;
+int session_num = -2;
 mqd_t queue_desc = -1;
-mqd_t privateID = -1;
+mqd_t priv_qid = -1;
 char myPath[20];
 
 // MAIN ////////////////////////////////////////////////////////////////////////
@@ -47,8 +47,8 @@ int main() {
     posixAttr.mq_maxmsg = MAX_MESSAGE_QUEUE_SIZE;
     posixAttr.mq_msgsize = MESSAGE_SIZE;
 
-    privateID = mq_open(myPath, O_RDONLY | O_CREAT | O_EXCL, 0666, &posixAttr);
-    if (privateID == -1) EXIT_MSG("client: creation of private queue failed\n");
+    priv_qid = mq_open(myPath, O_RDONLY | O_CREAT | O_EXCL, 0666, &posixAttr);
+    if (priv_qid == -1) EXIT_MSG("client: creation of private queue failed\n");
 
     register_client();
 
@@ -83,71 +83,71 @@ int main() {
 
 void register_client() {
     Message msg;
-    msg.mtype = LOGIN;
+    msg.type = REGISTER;
     msg.sender_pid = getpid();
 
     if (mq_send(queue_desc, (char*) &msg, MESSAGE_SIZE, 1) == -1)
     EXIT_MSG("client: login request failed\n");
-    if (mq_receive(privateID,(char*) &msg, MESSAGE_SIZE, NULL) == -1)
-    EXIT_MSG("client: catching LOGIN response failed\n");
-    if (sscanf(msg.message_text, "%d", &sessionID) < 1)
-    EXIT_MSG("client: scanning LOGIN response failed\n");
-    if (sessionID < 0)
+    if (mq_receive(priv_qid, (char*) &msg, MESSAGE_SIZE, NULL) == -1)
+    EXIT_MSG("client: catching REGISTER response failed\n");
+    if (sscanf(msg.content, "%d", &session_num) < 1)
+    EXIT_MSG("client: scanning REGISTER response failed\n");
+    if (session_num < 0)
     EXIT_MSG("client: server cannot have more clients\n");
 
-    printf("client: client registered! My session nr is %d\n", sessionID);
+    printf("client: client registered! My session nr is %d\n", session_num);
 }
 
 // HANDLERS ////////////////////////////////////////////////////////////////////
 
 void request_mirror(struct Message *msg){
-    msg->mtype = MIRROR;
+    msg->type = MIRROR;
     printf("client: enter string of characters to mirror: ");
-    if (fgets(msg->message_text, MAX_CONT_SIZE, stdin) == NULL) {
+    if (fgets(msg->content, MAX_CONT_SIZE, stdin) == NULL) {
         printf("client: too many characters\n");
         return;
     }
 
     if (mq_send(queue_desc, (char*) msg, MESSAGE_SIZE, 1) == -1)
     EXIT_MSG("client: MIRROR request failed\n");
-    if (mq_receive(privateID,(char*) msg, MESSAGE_SIZE, NULL) == -1)
+    if (mq_receive(priv_qid, (char*) msg, MESSAGE_SIZE, NULL) == -1)
     EXIT_MSG("client: catching MIRROR response failed\n");
-    printf("%s", msg->message_text);
+    printf("%s", msg->content);
 }
 
 void request_calc(struct Message *msg) {
-    msg->mtype = CALC;
+    msg->type = CALC;
     printf("Enter expression to calculate: ");
-    if (fgets(msg->message_text, MAX_CONT_SIZE, stdin) == NULL) {
+    if (fgets(msg->content, MAX_CONT_SIZE, stdin) == NULL) {
         printf("client: too many characters\n");
         return;
     }
     if (mq_send(queue_desc, (char*) msg, MESSAGE_SIZE, 1) == -1)
     EXIT_MSG("client: CALC request failed\n");
-    if (mq_receive(privateID,(char*) msg, MESSAGE_SIZE, NULL) == -1)
+    if (mq_receive(priv_qid, (char*) msg, MESSAGE_SIZE, NULL) == -1)
     EXIT_MSG("client: catching CALC response failed\n");
-    printf("%s", msg->message_text);
+    printf("%s", msg->content);
 }
 
 void request_time(struct Message *msg){
-    msg->mtype = TIME;
+    msg->type = TIME;
 
     if (mq_send(queue_desc, (char*) msg, MESSAGE_SIZE, 1) == -1)
     EXIT_MSG("client: TIME request failed\n");
-    if (mq_receive(privateID,(char*) msg, MESSAGE_SIZE, NULL) == -1)
+    if (mq_receive(priv_qid, (char*) msg, MESSAGE_SIZE, NULL) == -1)
     EXIT_MSG("client: catching TIME response failed\n");
-    printf("%s\n", msg->message_text);
+    printf("%s\n", msg->content);
 }
 
 void request_end(struct Message *msg) {
-    msg->mtype = END;
+    msg->type = END;
 
     if (mq_send(queue_desc, (char*) msg, MESSAGE_SIZE, 1) == -1)
     EXIT_MSG("client: END request failed\n");
 }
 
 void request_quit(struct Message *msg) {
-    msg->mtype = QUIT;
+    msg->type = QUIT;
 
     if (mq_send(queue_desc, (char*) msg, MESSAGE_SIZE, 1) == -1)
         printf("client: END request failed - server may have already been closed\n");
@@ -157,8 +157,8 @@ void request_quit(struct Message *msg) {
 // HELPERS /////////////////////////////////////////////////////////////////////
 
 void close_queue() {
-    if (privateID > -1) {
-        if (sessionID >= 0) {
+    if (priv_qid > -1) {
+        if (session_num >= 0) {
             printf("\nBefore quitting, i will try to send QUIT request to public queue!\n");
             Message msg;
             msg.sender_pid = getpid();
@@ -171,7 +171,7 @@ void close_queue() {
             printf("client: servers's queue closed successfully!\n");
         }
 
-        if (mq_close(privateID) == -1) {
+        if (mq_close(priv_qid) == -1) {
             printf("client: there was some error closing client's queue!\n");
         } else {
             printf("client: queue closed successfully!\n");

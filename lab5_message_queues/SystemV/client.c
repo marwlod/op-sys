@@ -11,145 +11,135 @@
 #include "common.h"
 #include "client.h"
 
-// MAIN ////////////////////////////////////////////////////////////////////////
-
 int main() {
-    if(atexit(close_queue) == -1)
-    EXIT_MSG("Registering client's atexit failed");
-    if(signal(SIGINT, sigint_handler) == SIG_ERR)
-    EXIT_MSG("Registering INT failed");
-
+    if (atexit(close_queue) == -1) {
+        EXIT_MSG("Client: registering 'atexit' failed\n");
+    }
+    if (signal(SIGINT, sigint_handler) == SIG_ERR) {
+        EXIT_MSG("Client: registering SIGINT handler failed\n");
+    }
     char* path = getenv("HOME");
-    if (path == NULL)
-    EXIT_MSG("Getting $HOME failed");
+    if (path == NULL) {
+        EXIT_MSG("Client: getting HOME env variable failed\n");
+    }
+    queue_desc = create_priv_queue(path, PROJECT_ID);
 
-    queue_desc = create_queue(path, PROJECT_ID);
+    key_t key = ftok(path, getpid());
+    if (key == -1) {
+        EXIT_MSG("Generation of private key failed\n");
+    }
 
-    key_t privateKey = ftok(path, getpid());
-    if (privateKey == -1)
-    EXIT_MSG("Generation of private key failed");
+    priv_qid = msgget(key, IPC_CREAT | IPC_EXCL | 0666);
+    if (priv_qid == -1) {
+        EXIT_MSG("Creation of private queue failed\n");
+    }
+    register_client(key);
 
-    privateID = msgget(privateKey, IPC_CREAT | IPC_EXCL | 0666);
-    if (privateID == -1)
-    EXIT_MSG("Creation of private queue failed");
-
-    register_client(privateKey);
-
-    char cmd[20];
+    char request[50];
     Message msg;
-    while(1) {
+    while (1) {
         msg.sender_pid = getpid();
-        printf("client: enter your request: ");
-        if (fgets(cmd, 20, stdin) == NULL){
-            printf("client: error reading your command\n");
+        printf("Client: waiting for request: \n");
+        if (fgets(request, 50, stdin) == NULL){
+            printf("Client: request is invalid, try again\n");
             continue;
         }
-        int n = strlen(cmd);
-        if (cmd[n-1] == '\n') cmd[n-1] = 0;
+        int n = strlen(request);
+        if (request[n-1] == '\n') request[n-1] = 0;
 
-
-        if (strcmp(cmd, "mirror") == 0) {
+        if (strcmp(request, "mirror") == 0) {
             request_mirror(&msg);
-        } else if (strcmp(cmd, "calc") == 0) {
-            request_calc(&msg);
-        } else if (strcmp(cmd, "time") == 0) {
+        } else if (strcmp(request, "time") == 0) {
             request_time(&msg);
-        } else if (strcmp(cmd, "end") == 0) {
+        } else if (strcmp(request, "end") == 0) {
             request_end(&msg);
-        } else if (strcmp(cmd, "quit") == 0) {
+        } else if (strcmp(request, "quit") == 0) {
             exit(0);
         } else {
-            printf("client: incorrect command\n");
+            printf("Client: unknown request type %s\n", request);
         }
     }
 }
 
-void register_client(key_t privateKey) {
+void register_client(key_t key) {
     Message msg;
-    msg.mtype = LOGIN;
+    msg.type = REGISTER;
     msg.sender_pid = getpid();
-    sprintf(msg.message_text, "%d", privateKey);
+    sprintf(msg.content, "%d", key);
 
-    if (msgsnd(queue_desc, &msg, MSG_SIZE, 0) == -1)
-    EXIT_MSG("client: LOGIN request failed\n");
-    if (msgrcv(privateID, &msg, MSG_SIZE, 0, 0) == -1)
-    EXIT_MSG("client: catching LOGIN response failed\n");
-    if (sscanf(msg.message_text, "%d", &sessionID) < 1)
-    EXIT_MSG("client: scanning LOGIN response failed\n");
-    if (sessionID < 0)
-    EXIT_MSG("client: server cannot have more clients\n");
+    if (msgsnd(queue_desc, &msg, MSG_SIZE, 0) == -1) {
+        EXIT_MSG("Client: REGISTER request sending failed\n");
+    }
+    if (msgrcv(priv_qid, &msg, MSG_SIZE, 0, 0) == -1) {
+        EXIT_MSG("Client: getting REGISTER response failed\n");
+    }
+    if (sscanf(msg.content, "%d", &session_num) < 1) {
+        EXIT_MSG("Client: REGISTER response is invalid\n");
+    }
+    if (session_num < 0) {
+        EXIT_MSG("Client: server is unable to register any more clients\n");
+    }
 
-    printf("client: client registered. Session no: %d\n", sessionID);
+    printf("Client: client registration succeeded, session: %d\n", session_num);
 }
-
-// HANDLERS ////////////////////////////////////////////////////////////////////
 
 void request_mirror(Message *msg) {
-    msg->mtype = MIRROR;
-    printf("Enter string of characters to Mirror: ");
-    if (fgets(msg->message_text, MAX_CONT_SIZE, stdin) == 0) {
-        printf("client: too many characters\n");
+    msg->type = MIRROR;
+    printf("Enter a string to mirror: \n");
+    if (fgets(msg->content, MAX_CONT_SIZE, stdin) == 0) {
+        printf("Client: maximum number of characters exceeded: %d\n", MAX_CONT_SIZE);
         return;
     }
-    if (msgsnd(queue_desc, msg, MSG_SIZE, 0) == -1)
-    EXIT_MSG("client: MIRROR request failed");
-    if (msgrcv(privateID, msg, MSG_SIZE, 0, 0) == -1)
-    EXIT_MSG("client: catching MIRROR response failed");
-    printf("%s", msg->message_text);
-}
-
-void request_calc(Message *msg) {
-    msg->mtype = CALC;
-    printf("Enter expression to calculate: ");
-    if (fgets(msg->message_text, MAX_CONT_SIZE, stdin) == 0) {
-        printf("client: too many characters\n");
-        return;
+    if (msgsnd(queue_desc, msg, MSG_SIZE, 0) == -1) {
+        EXIT_MSG("Client: MIRROR request sending failed\n");
     }
-    if(msgsnd(queue_desc, msg, MSG_SIZE, 0) == -1)
-    EXIT_MSG("client: CALC request failed");
-    if(msgrcv(privateID, msg, MSG_SIZE, 0, 0) == -1)
-    EXIT_MSG("client: catching CALC response failed");
-    printf("%s", msg->message_text);
+    if (msgrcv(priv_qid, msg, MSG_SIZE, 0, 0) == -1) {
+        EXIT_MSG("Client: getting MIRROR response failed\n");
+    }
+    printf("%s", msg->content);
 }
 
 void request_time(Message *msg) {
-    msg->mtype = TIME;
-
-    if(msgsnd(queue_desc, msg, MSG_SIZE, 0) == -1)
-    EXIT_MSG("client: TIME request failed");
-    if(msgrcv(privateID, msg, MSG_SIZE, 0, 0) == -1)
-    EXIT_MSG("client: catching TIME response failed");
-    printf("%s\n", msg->message_text);
+    msg->type = TIME;
+    if (msgsnd(queue_desc, msg, MSG_SIZE, 0) == -1) {
+        EXIT_MSG("Client: TIME request sending failed\n");
+    }
+    if (msgrcv(priv_qid, msg, MSG_SIZE, 0, 0) == -1) {
+        EXIT_MSG("Client: getting TIME response failed\n");
+    }
+    printf("%s\n", msg->content);
 }
 
 void request_end(Message *msg) {
-    msg->mtype = END;
-
-    if(msgsnd(queue_desc, msg, MSG_SIZE, 0) == -1)
-    EXIT_MSG("client: END request failed");
+    msg->type = END;
+    if (msgsnd(queue_desc, msg, MSG_SIZE, 0) == -1) {
+        EXIT_MSG("Client: END request sending failed\n");
+    }
 }
 
-// HELPERS /////////////////////////////////////////////////////////////////////
-
-int create_queue(char *path, int ID) {
+int create_priv_queue(char *path, int ID) {
     int key = ftok(path, ID);
-    if(key == -1) EXIT_MSG("Generation of key failed");
-
-    int QueueID = msgget(key, 0);
-    if (QueueID == -1) EXIT_MSG("Opening queue failed");
-
-    return QueueID;
+    if (key == -1) {
+        EXIT_MSG("Client: generation of key for private queue failed\n");
+    }
+    int q_id = msgget(key, 0);
+    if (q_id == -1) {
+        EXIT_MSG("Client: opening private queue failed\n");
+    }
+    return q_id;
 }
 
 void close_queue() {
-    if (privateID > -1) {
-        if (msgctl(privateID, IPC_RMID, NULL) == -1){
-            printf("There was some error deleting clients's queue\n");
-        }
-        else {
-            printf("Client's queue deleted successfully\n");
+    if (priv_qid > -1) {
+        if (msgctl(priv_qid, IPC_RMID, NULL) == -1) {
+            printf("Client: deletion of client's queue failed\n");
+        } else {
+            printf("Client: queue deleted successfully\n");
         }
     }
 }
 
-void sigint_handler(int _) { exit(2); }
+// handle SIGINT
+void sigint_handler(int _) {
+    exit(2);
+}
